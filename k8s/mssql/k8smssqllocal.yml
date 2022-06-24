@@ -1,0 +1,76 @@
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mssql-pv-volume
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/mnt/data"
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mssql-pv-volume-claim
+spec:
+  storageClassName: manual
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 3Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mssql-deployment
+  labels:
+    app: mssql
+spec:
+  selector:
+    matchLabels:
+      app: mssql
+  template:
+    metadata:
+      labels:
+        app: mssql
+    spec:
+      volumes:
+        - name: mssqldb
+          persistentVolumeClaim:
+            claimName: mssql-pv-volume-claim
+      containers:
+        - name: mssql-container
+          image: mcr.microsoft.com/mssql/server:latest
+          env:
+            - name: ACCEPT_EULA
+              value: "true"
+            - name: MSSQL_PID
+              value: "Express"
+            - name: SA_PASSWORD
+              value: "f0vez6vzzuvT"
+          volumeMounts:
+            - name: mssqldb
+              mountPath: /var/opt/mssql
+
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mssql-service
+spec:
+  selector:
+    app: mssql
+  ports:
+    - protocol: TCP
+      port: 1433
+      targetPort: 1433
